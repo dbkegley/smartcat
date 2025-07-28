@@ -7,6 +7,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use crate::config::{api::Api, resolve_config_path};
+use aws_sdk_bedrockruntime::types::ConversationRole;
 
 const PROMPT_FILE: &str = "prompts.toml";
 const CONVERSATION_FILE: &str = "conversation.toml";
@@ -89,6 +90,23 @@ impl Message {
             role: "assistant".to_string(),
             content: content.to_string(),
         }
+    }
+}
+
+impl Into<aws_sdk_bedrockruntime::types::Message> for Message {
+    fn into(self) -> aws_sdk_bedrockruntime::types::Message {
+        let role = match self.role.as_str() {
+            "assistant" => ConversationRole::Assistant,
+            "user" => ConversationRole::User,
+            _ => panic!("system role not supported for bedrock messages"),
+        };
+        aws_sdk_bedrockruntime::types::Message::builder()
+            .role(role)
+            .content(aws_sdk_bedrockruntime::types::ContentBlock::Text(
+                self.content,
+            ))
+            .build()
+            .unwrap()
     }
 }
 

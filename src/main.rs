@@ -1,3 +1,4 @@
+mod client;
 mod config;
 mod prompt_customization;
 mod text;

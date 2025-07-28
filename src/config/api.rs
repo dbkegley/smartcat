@@ -7,7 +7,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use super::{prompt::Prompt, resolve_config_path};
+use super::{prompt::Message, prompt::Prompt, resolve_config_path};
 
 const API_KEYS_FILE: &str = ".api_configs.toml";
 
@@ -20,6 +20,7 @@ pub enum Api {
     Groq,
     Mistral,
     Openai,
+    AWSBedrock,
     AzureOpenai,
     Cerebras,
 }
@@ -46,6 +47,7 @@ impl ToString for Api {
         match self {
             Api::Ollama => "ollama".to_string(),
             Api::Openai => "openai".to_string(),
+            Api::AWSBedrock => "awsbedrock".to_string(),
             Api::AzureOpenai => "azureopenai".to_string(),
             Api::Mistral => "mistral".to_string(),
             Api::Groq => "groq".to_string(),
@@ -138,6 +140,17 @@ impl ApiConfig {
         }
     }
 
+    pub(super) fn awsbedrock() -> Self {
+        ApiConfig {
+            api_key_command: None,
+            api_key: None,
+            url: String::from(""),
+            default_model: Some(String::from("us.anthropic.claude-3-7-sonnet-20250219-v1:0")),
+            version: None,
+            timeout_seconds: None,
+        }
+    }
+
     pub(super) fn azureopenai() -> Self {
         ApiConfig {
             api_key_command: None,
@@ -202,6 +215,7 @@ pub(super) fn generate_api_keys_file() -> std::io::Result<()> {
     let mut api_config = HashMap::new();
     api_config.insert(Api::Ollama.to_string(), ApiConfig::ollama());
     api_config.insert(Api::Openai.to_string(), ApiConfig::openai());
+    api_config.insert(Api::AWSBedrock.to_string(), ApiConfig::awsbedrock());
     api_config.insert(Api::AzureOpenai.to_string(), ApiConfig::azureopenai());
     api_config.insert(Api::Mistral.to_string(), ApiConfig::mistral());
     api_config.insert(Api::Groq.to_string(), ApiConfig::groq());
@@ -243,4 +257,28 @@ pub fn get_api_config(api: &str) -> ApiConfig {
             api_configs.keys().collect::<Vec<_>>()
         )
     })
+}
+
+pub trait ApiClient {
+    fn do_request(&self) -> Result<Message, ApiError>;
+}
+
+#[derive(Debug)]
+pub struct ApiError {
+    pub model: Option<String>,
+    pub error: String,
+}
+
+impl std::fmt::Display for ApiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Can't invoke '{:?}'. Reason: {}", self.model, self.error)
+    }
+}
+
+impl std::error::Error for ApiError {}
+
+impl ApiError {
+    pub fn new(model: Option<String>, error: String) -> Self {
+        ApiError { model, error }
+    }
 }

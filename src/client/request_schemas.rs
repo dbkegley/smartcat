@@ -65,3 +65,17 @@ impl From<Prompt> for AnthropicPrompt {
         }
     }
 }
+
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum PromptFormat {
+    OpenAi(OpenAiPrompt),
+    Anthropic(AnthropicPrompt),
+    AWSBedrock(AnthropicPrompt),
+}
+
+impl Into<Vec<aws_sdk_bedrockruntime::types::Message>> for AnthropicPrompt {
+    fn into(self) -> Vec<aws_sdk_bedrockruntime::types::Message> {
+        self.messages.iter().cloned().map(|m| m.into()).collect()
+    }
+}

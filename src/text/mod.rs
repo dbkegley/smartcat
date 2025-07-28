@@ -1,6 +1,4 @@
 mod api_call;
-mod request_schemas;
-mod response_schemas;
 
 use log::debug;
 use std::io::{Result, Write};
